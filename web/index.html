@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>每日一句 - AI分析</title>
+  <link rel="stylesheet" href="/static/web/css/element-plus.css">
+   <style>
+    body{
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+      height: 100vh;
+      overflow: auto;
+    }
+    .container {
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+    }
+    .box{
+        position: relative;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 600px;
+        margin-top: 100px;
+        text-align: left;
+        box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, .04), 0px 8px 20px rgba(0, 0, 0, .08);
+        box-sizing: border-box;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+    .list-box{
+        width: 100%;
+        border: 1px solid #f1f1f1;
+        margin-top: 30px;
+        box-sizing: border-box;
+        padding: 10px;
+        flex: 1;
+        overflow-y: auto;
+    }
+    .single{
+        margin-top: 10px;
+        font-size: 14px;
+        display: flex;
+        align-items: baseline;
+        cursor: pointer;
+    }
+    .single:last-child{
+        margin-bottom: 10px;
+    }
+    .textCenter{
+        text-align: center;
+    }
+   </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div class="box">
+            <div class="textCenter" style="width: 100%;">
+                <el-text class="textCenter" type="primary" size="large">{{ message }}</el-text>
+            </div>
+            
+            <div @click="getDailySentence" class="textCenter" style="margin: 20px 0;">
+                <el-button type="success">每日一句</el-button>  
+            </div>
+            <div>
+                <div >Ollama本地模型列表(已下载)：</div>
+                <el-select v-model="currentModel" placeholder="" style="width: 200px">
+                    <el-option
+                        v-for="item in options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                    />
+                </el-select>
+                <el-select v-model="currentModelAnalysis" placeholder="" style="width: 100px">
+                    <el-option
+                        v-for="item in optionsAnalysis"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                    />
+                </el-select>
+                <el-button :loading="loading" @click="getOllamaAnalysis">{{loading ? '分析中' : 'AI分析'}}</el-button>
+                <el-button type="primary" @click="dialogVisible = true">添加</el-button>
+            </div>
+            <div class="list-box" v-show="analysisResult" v-html="analysisResult"></div>
+            <el-dialog
+                v-model="dialogVisible"
+                title="添加"
+                width="500"
+                append-to-body
+                :close-on-click-modal="false"
+            >
+                <div>
+                    <el-input
+                        v-model="input"
+                        type="textarea"
+                        placeholder="请输入"
+                        maxlength="50"
+                        show-word-limit
+                        word-limit-position="outside"
+                        :rows="3"
+                    />
+                </div>
+                <template #footer>
+                    <div class="dialog-footer">
+                      <el-button @click="dialogVisible = false">取消</el-button>
+                      <el-button type="primary" @click="handleAdd">确认</el-button>
+                    </div>
+                  </template>
+            </el-dialog>
+        
+        </div>
+    </div>
+</div>
+<script src="/static/web/js/marked.js"></script>
+<script src="/static/web/js/vue.js"></script>
+<script src="/static/web/js/element-plus.js"></script>
+<script>
+    const { createApp, ref, onMounted } = Vue;
+    const { ElMessage } = ElementPlus;
+
+    const App = {
+    setup() {
+        const dialogVisible = ref(false);
+        const input = ref('');
+        const message = ref('');
+        const optionsAnalysis = ref([
+            { value: 'semantic', label: '语义分析' },
+            { value: 'emotion', label: '情感分析' },
+            { value: 'humor', label: '幽默分析' },
+            { value: 'intent', label: '意图分析' },
+            { value: 'tone', label: '语气分析' },
+        ]);
+        const currentModelAnalysis = ref('semantic');
+        // 每日一句
+        const getDailySentence = async () => {
+            try {
+                const res = await fetch('/api/single_sentence')
+                const data = await res.json()
+                if (data.code == 200) {
+                    let obj = data.data || {}
+                    message.value = obj.content || 'No sentence found.'
+                }
+            } catch (error) {}
+        }
+        // 添加
+        const handleAdd = async () => {
+            if (!input.value) {
+                ElMessage({
+                    message: '请输入内容!',
+                    type: 'warning',
+                })
+                return
+            }
+            try {
+                const res = await fetch('/api/add_sentence', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: input.value,
+                    }),
+                })
+                const data = await res.json()
+                if (data.code == 200) {
+                    ElMessage.success('添加成功!')
+                    message.value = input.value;
+                    input.value = ''
+                    dialogVisible.value = false
+                } else {
+                    ElMessage.error('添加失败!')
+                }
+            } catch (error) {
+                console.error('Error adding sentence:', error)
+            }
+        }
+        
+        // Models List
+        const options = ref([])
+        const currentModel = ref('')
+        const getOllamaModelsList = async () => {
+            try {
+                const res = await fetch('/api/ollama_models')
+                const data = await res.json()
+                if (data.code == 200) {
+                    let models = data.data.models || [];
+                    currentModel.value = models.length > 0 ? models[0].name : ''
+                    options.value = models.map(model => ({
+                        value: model.name,
+                        label: model.name,
+                    }))
+                }
+                console.log('Ollama Models List:', data)
+            } catch (error) {
+                console.error('Error fetching Ollama models:', error)
+            }
+        }
+        // AI分析
+        const analysisResult = ref('')
+        const loading = ref(false)
+        const getOllamaAnalysis = async () => {
+            if (!currentModel.value) {
+                alert('Please select a model first.')
+                return
+            }
+            if (!message.value) {
+                alert('Please fetch a sentence first.')
+                return
+            }
+            try {
+                loading.value = true
+                const res = await fetch('/api/ollama_generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: currentModel.value,
+                        sentence: message.value,
+                        analysis_type: currentModelAnalysis.value,
+                    }),
+                })
+                const data = await res.json()
+                if (data.code == 200) {
+                    analysisResult.value = marked.parse(data.data.response)
+                }
+                loading.value = false;
+            } catch (error) {
+                loading.value = false
+                console.error('Error fetching Ollama analysis:', error)
+            }
+        }
+        onMounted(() => {
+            getDailySentence()
+            getOllamaModelsList()
+        })
+        return {
+            message,
+            input,
+            options,
+            currentModel,
+            analysisResult,
+            dialogVisible,
+            optionsAnalysis,
+            currentModelAnalysis,
+            loading,
+            handleAdd,
+            getDailySentence,
+            getOllamaAnalysis,
+        }
+    }
+    }
+
+    createApp(App).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

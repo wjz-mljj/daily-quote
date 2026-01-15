@@ -1,0 +1,1 @@
+> 打包命令：go build -o app.exe
