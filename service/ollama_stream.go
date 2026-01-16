@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -99,4 +100,90 @@ func OllamaListModels() (interface{}, error) {
 	}
 
 	return result, nil
+}
+
+// 删除指定模型
+func Ollama_delete_model(modelName string) (interface{}, error) {
+	params := map[string]string{
+		"model": modelName,
+	}
+	// 序列化为JSON
+	paramsBytes, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	print(string(paramsBytes))
+	req, err := http.NewRequest("DELETE", base_url+"/api/delete", bytes.NewBuffer(paramsBytes))
+	if err != nil {
+		return nil, err
+	}
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, err
+	}
+	return "success", nil
+
+}
+
+type PullProgress struct {
+	Status    string `json:"status"`
+	Digest    string `json:"digest,omitempty"`
+	Total     int64  `json:"total,omitempty"`
+	Completed int64  `json:"completed,omitempty"`
+}
+
+// 拉取指定模型
+func Ollama_pull_model(modelName string) (<-chan PullProgress, error) {
+	payload := map[string]any{
+		"model":    modelName,
+		"insecure": true,
+		"stream":   true,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", base_url+"/api/pull", bytes.NewReader(payloadBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := (&http.Client{Timeout: 0}).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	// 创建一个通道用于传输拉取进度 使用协程读取响应体并发送进度到通道
+	ch := make(chan PullProgress)
+	go func() {
+		defer resp.Body.Close()
+		defer close(ch)
+
+		scanner := bufio.NewScanner(resp.Body)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+		for scanner.Scan() {
+			var p PullProgress
+			if err := json.Unmarshal(scanner.Bytes(), &p); err != nil {
+				continue
+			}
+
+			ch <- p
+
+			if p.Status == "success" {
+				return
+			}
+		}
+	}()
+
+	return ch, nil
 }

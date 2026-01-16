@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>每日一句 - AI分析</title>
-  <link rel="stylesheet" href="/static/web/css/element-plus.css">
+  <link rel="stylesheet" href="/static/css/element-plus.css">
    <style>
     body{
         margin: 0;
@@ -67,7 +67,11 @@
                 <el-button type="success">每日一句</el-button>  
             </div>
             <div>
-                <div >Ollama本地模型列表(已下载)：</div>
+                <div>
+                    <span>Ollama本地模型列表(已下载)：</span>
+                    <el-button type="danger" @click="deleteModelDialogVisible = true">删除</el-button>
+                    <el-button type="success" @click="pullModelDialogVisible = true">拉取</el-button>
+                </div>
                 <el-select v-model="currentModel" placeholder="" style="width: 200px">
                     <el-option
                         v-for="item in options"
@@ -88,6 +92,56 @@
                 <el-button type="primary" @click="dialogVisible = true">添加</el-button>
             </div>
             <div class="list-box" v-show="analysisResult" v-html="analysisResult"></div>
+
+            <!-- 删除模型 -->
+            <el-dialog
+                v-model="deleteModelDialogVisible"
+                title="删除模型"
+                width="500"
+                append-to-body
+                :close-on-click-modal="false"
+            >
+                <div>
+                    <el-select v-model="currentModelToDelete" placeholder="请选择要删除的模型">
+                        <el-option
+                            v-for="item in options"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value"
+                        />
+                    </el-select>
+                </div>
+                <template #footer>
+                    <div class="dialog-footer">
+                      <el-button @click="deleteModelDialogVisible = false">取消</el-button>
+                      <el-button type="primary" @click="handleDelModel">确认</el-button>
+                    </div>
+                  </template>
+            </el-dialog>
+            <!-- 拉取 -->
+            <el-dialog
+                v-model="pullModelDialogVisible"
+                title="拉取模型"
+                width="500"
+                append-to-body
+                :close-on-click-modal="false"
+            >
+                <div>
+                    <div>
+                        <el-input type="text" v-model="pullModelName" :disabled="pullLoading" placeholder="请输入要拉取的模型名称" />
+                    </div>
+                    <div>
+                        {{pullLoading ? '拉取中...' : pullError}}
+                    </div>
+                </div>
+                <template #footer>
+                    <div class="dialog-footer">
+                      <el-button @click="pullModelDialogVisible = false" :disabled="pullLoading">取消</el-button>
+                      <el-button type="primary" @click="handlePullModel" :loading="pullLoading">确认</el-button>
+                    </div>
+                  </template>
+            </el-dialog>
+            <!-- 添加 -->
             <el-dialog
                 v-model="dialogVisible"
                 title="添加"
@@ -96,15 +150,17 @@
                 :close-on-click-modal="false"
             >
                 <div>
-                    <el-input
-                        v-model="input"
-                        type="textarea"
-                        placeholder="请输入"
-                        maxlength="50"
-                        show-word-limit
-                        word-limit-position="outside"
-                        :rows="3"
-                    />
+                   <div>
+                        <el-input
+                            v-model="input"
+                            type="textarea"
+                            placeholder="请输入"
+                            maxlength="50"
+                            show-word-limit
+                            word-limit-position="outside"
+                            :rows="3"
+                        />
+                   </div>
                 </div>
                 <template #footer>
                     <div class="dialog-footer">
@@ -117,9 +173,9 @@
         </div>
     </div>
 </div>
-<script src="/static/web/js/marked.js"></script>
-<script src="/static/web/js/vue.js"></script>
-<script src="/static/web/js/element-plus.js"></script>
+<script src="/static/js/marked.js"></script>
+<script src="/static/js/vue.js"></script>
+<script src="/static/js/element-plus.js"></script>
 <script>
     const { createApp, ref, onMounted } = Vue;
     const { ElMessage } = ElementPlus;
@@ -201,12 +257,88 @@
                 console.error('Error fetching Ollama models:', error)
             }
         }
+        // 删除模型
+        const deleteModelDialogVisible = ref(false)
+        const currentModelToDelete = ref('')
+        const handleDelModel = async () => {
+            if (!currentModelToDelete.value) {
+                ElMessage({
+                    message: '请选择要删除的模型!',
+                    type: 'warning',
+                })
+                return
+            }
+            try {
+                const res = await fetch('/api/ollama_delete_model', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        modelName: currentModelToDelete.value,
+                    }),
+                })
+                const data = await res.json()
+                if (data.code == 200) {
+                    ElMessage.success('模型删除成功!')
+                    deleteModelDialogVisible.value = false
+                    getOllamaModelsList()
+                } else {
+                    ElMessage.error('模型删除失败!')
+                }
+            } catch (error) {
+                console.error('Error deleting Ollama model:', error)
+            }
+        }
+        // 拉取模型
+        const pullModelDialogVisible = ref(false)
+        const pullModelName = ref('')
+        const pullLoading = ref(false)
+        const pullError = ref('')
+        const handlePullModel = async () => {
+            if (!pullModelName.value) {
+                ElMessage({
+                    message: '请输入要拉取的模型名称!',
+                    type: 'warning',
+                })
+                return
+            }
+            try {
+                // llama3.2:1b
+                const source = new EventSource(`/api/pull/stream?modelName=${pullModelName.value}`)
+                pullError.value = ''
+                pullLoading.value = true
+                source.onmessage = (e) => {
+                    const data = JSON.parse(e.data)
+                    // console.log(data)
+                    if (data.status === "success") {
+                        pullLoading.value = false
+                        pullModelDialogVisible.value = false
+                        source.close()
+                        ElMessage.success('模型拉取成功!')
+                        setTimeout(() => {
+                            getOllamaModelsList()
+                        }, 1000)
+                    }
+                }
+                source.onerror = () => {
+                    pullLoading.value = false
+                    pullError.value = 'Error pulling Ollama model.'
+                    source.close()
+                }
+            } catch (error) {
+                pullError.value = 'Error pulling Ollama model.'
+            }
+        }
         // AI分析
         const analysisResult = ref('')
         const loading = ref(false)
         const getOllamaAnalysis = async () => {
             if (!currentModel.value) {
-                alert('Please select a model first.')
+                ElMessage({
+                    message: '请选择模型!',
+                    type: 'warning',
+                })
                 return
             }
             if (!message.value) {
@@ -250,6 +382,14 @@
             optionsAnalysis,
             currentModelAnalysis,
             loading,
+            deleteModelDialogVisible,
+            currentModelToDelete,
+            pullModelDialogVisible,
+            pullModelName,
+            pullLoading,
+            pullError,
+            handlePullModel,
+            handleDelModel,
             handleAdd,
             getDailySentence,
             getOllamaAnalysis,
