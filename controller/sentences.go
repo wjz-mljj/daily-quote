@@ -1,11 +1,13 @@
 package controller
 
 import (
-	"a-sentence/database"
-	"a-sentence/model"
-	"a-sentence/service"
+	"daily-quote/database"
+	"daily-quote/model"
+	"daily-quote/service"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 )
 
 // CreateSentence 创建句子
@@ -36,14 +38,22 @@ func CreateSentence(c *gin.Context) {
 	})
 }
 
-// ListUsers 列出所有句子
-func ListSentence(c *gin.Context) {
-	var sentences []model.Sentence
-	database.DB.Find(&sentences)
+// 分页查询句子
+func GetListSentences(c *gin.Context) {
+	data, err := service.ListSentences(1, 200)
+	if err != nil {
+		c.JSON(200, model.Response{
+			Code:    500,
+			Message: "Error",
+			Data:    nil,
+		})
+		return
+	}
 
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": sentences,
+	c.JSON(200, model.Response{
+		Code:    200,
+		Message: "success",
+		Data:    data,
 	})
 }
 
@@ -63,4 +73,34 @@ func GetRandomSentence(c *gin.Context) {
 		Message: "success",
 		Data:    sentence,
 	})
+}
+
+// 导出
+func ExportSentences(c *gin.Context) {
+	data, err := service.ExportSentences()
+	if err != nil {
+		c.JSON(200, model.Response{
+			Code:    500,
+			Message: "Error",
+			Data:    nil,
+		})
+		return
+	}
+	f := excelize.NewFile()
+	sheet := "Sheet1"
+
+	f.SetCellValue(sheet, "A1", "ID")
+	f.SetCellValue(sheet, "B1", "内容")
+
+	for i, s := range data {
+		row := i + 2
+		f.SetCellValue(sheet, "A"+strconv.Itoa(row), s.ID)
+		f.SetCellValue(sheet, "B"+strconv.Itoa(row), s.Content)
+	}
+
+	// 设置响应头（关键）
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename=sentences.xlsx")
+
+	_ = f.Write(c.Writer)
 }

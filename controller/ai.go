@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"a-sentence/model"
-	"a-sentence/service"
+	"daily-quote/model"
+	"daily-quote/service"
 	"encoding/json"
 	"fmt"
 	"net/http"

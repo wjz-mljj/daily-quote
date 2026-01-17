@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"a-sentence/service"
+	"daily-quote/service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

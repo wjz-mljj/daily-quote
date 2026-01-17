@@ -1,8 +1,8 @@
 package main
 
 import (
-	"a-sentence/database"
-	"a-sentence/router"
+	"daily-quote/database"
+	"daily-quote/router"
 	"embed"
 	"log"
 )

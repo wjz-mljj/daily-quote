@@ -1,7 +1,7 @@
 package database
 
 import (
-	"a-sentence/model"
+	"daily-quote/model"
 	"log"
 
 	"gorm.io/driver/sqlite"

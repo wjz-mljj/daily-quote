@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"a-sentence/model"
+	"daily-quote/model"
 	"log"
 	"net/http"
 

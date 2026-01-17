@@ -53,11 +53,20 @@
     .textCenter{
         text-align: center;
     }
+    .config{
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        cursor: pointer;
+        width: 30px;
+        height: 30px;
+    }
    </style>
 </head>
 <body>
 <div id="app">
     <div class="container">
+        <img src="/static/icon/config.png" class="config" @click="configDialogVisible = true" title="配置" />
         <div class="box">
             <div class="textCenter" style="width: 100%;">
                 <el-text class="textCenter" type="primary" size="large">{{ message }}</el-text>
@@ -66,12 +75,7 @@
             <div @click="getDailySentence" class="textCenter" style="margin: 20px 0;">
                 <el-button type="success">每日一句</el-button>  
             </div>
-            <div>
-                <div>
-                    <span>Ollama本地模型列表(已下载)：</span>
-                    <el-button type="danger" @click="deleteModelDialogVisible = true">删除</el-button>
-                    <el-button type="success" @click="pullModelDialogVisible = true">拉取</el-button>
-                </div>
+            <div style="text-align: center;">
                 <el-select v-model="currentModel" placeholder="" style="width: 200px">
                     <el-option
                         v-for="item in options"
@@ -89,10 +93,40 @@
                     />
                 </el-select>
                 <el-button :loading="loading" @click="getOllamaAnalysis">{{loading ? '分析中' : 'AI分析'}}</el-button>
-                <el-button type="primary" @click="dialogVisible = true">添加</el-button>
+                
             </div>
             <div class="list-box" v-show="analysisResult" v-html="analysisResult"></div>
 
+            <!-- config -->
+             <el-dialog
+                v-model="configDialogVisible"
+                title="配置"
+                width="900"
+                append-to-body
+                :close-on-click-modal="false"
+            >
+                <div>
+                     <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                        <div style="width: 120px;">Ollama本地模型：</div>
+                        <el-button type="danger" @click="deleteModelDialogVisible = true">删除</el-button>
+                        <el-button type="success" @click="pullModelDialogVisible = true">拉取</el-button>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                        <div style="width: 120px;">数据列表：</div>
+                        <!-- <el-button type="danger">导入</el-button> -->
+                        <el-button type="primary" @click="dialogVisible = true">添加</el-button>
+                        <el-button type="success" @click="exportSentences">导出</el-button>
+                    </div>
+                   <el-table :data="tableData" style="width: 100%" max-height="300">
+                        <el-table-column prop="content" label="内容" />
+                        <!-- <el-table-column fixed="right" label="操作" width="150">
+                            <template #default="scope">
+                                <el-button type="danger">删除</el-button>
+                            </template>
+                        </el-table-column> -->
+                    </el-table>
+                </div>
+            </el-dialog>
             <!-- 删除模型 -->
             <el-dialog
                 v-model="deleteModelDialogVisible"
@@ -193,6 +227,7 @@
             { value: 'tone', label: '语气分析' },
         ]);
         const currentModelAnalysis = ref('semantic');
+        const configDialogVisible = ref(false);
         // 每日一句
         const getDailySentence = async () => {
             try {
@@ -204,7 +239,7 @@
                 }
             } catch (error) {}
         }
-        // 添加
+        // 添加 句子
         const handleAdd = async () => {
             if (!input.value) {
                 ElMessage({
@@ -237,7 +272,22 @@
             }
         }
         
-        // Models List
+        // 句子列表
+        const tableData = ref([]);
+        const getSentenceList = async () => {
+            try {
+                const res = await fetch('/api/sentence_list')
+                const data = await res.json()
+                if (data.code == 200) {
+                    let list = data.data.list || [];
+                    tableData.value = list
+                    console.log('Sentence List:', tableData.value)
+                }
+            } catch (error) {
+                console.error('Error fetching sentence list:', error)
+            }
+        }
+        // 模型列表（可用）
         const options = ref([])
         const currentModel = ref('')
         const getOllamaModelsList = async () => {
@@ -368,9 +418,25 @@
                 console.error('Error fetching Ollama analysis:', error)
             }
         }
+        
+        // 导出
+        const exportSentences = () => {
+            fetch('/export/sentences')
+                .then(res => res.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'sentences.xlsx'
+                    a.click()
+                    URL.revokeObjectURL(url)
+                })
+        }
+        
         onMounted(() => {
             getDailySentence()
             getOllamaModelsList()
+            getSentenceList()
         })
         return {
             message,
@@ -388,11 +454,14 @@
             pullModelName,
             pullLoading,
             pullError,
+            configDialogVisible,
+            tableData,
             handlePullModel,
             handleDelModel,
             handleAdd,
             getDailySentence,
             getOllamaAnalysis,
+            exportSentences,
         }
     }
     }
