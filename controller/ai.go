@@ -59,7 +59,7 @@ func OllamaGenerateRequest(c *gin.Context) {
 	})
 }
 
-type OllamaDeleteRequest struct {
+type OllamaDeleteRequest struct { // 响应结构体
 	ModelNmae string `json:"modelName"`
 }
 

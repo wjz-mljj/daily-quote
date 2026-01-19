@@ -43,14 +43,15 @@ func InitRouter(webFS embed.FS) *gin.Engine {
 	{
 		api.GET("/ping", controller.Ping)
 		api.POST("/add_sentence", controller.CreateSentence)
+		api.DELETE("/del_sentence/:id", controller.DeleteSentence)
 		api.GET("/single_sentence", controller.GetRandomSentence)
 		api.GET("/sentence_list", controller.GetListSentences)
 		api.GET("/ollama_models", controller.ModelsList)
 		api.POST("/ollama_generate", controller.OllamaGenerateRequest)
 		api.POST("/ollama_delete_model", controller.OllamaDeleteModele)
 		api.GET("/pull/stream", controller.OllamaPullModel)
-		r.GET("/export/sentences", controller.ExportSentences)
 	}
 
+	r.GET("/export/sentences", controller.ExportSentences)
 	return r
 }

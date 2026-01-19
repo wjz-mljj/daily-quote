@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"daily-quote/database"
 	"daily-quote/model"
 	"daily-quote/service"
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +13,7 @@ import (
 // CreateSentence 创建句子
 func CreateSentence(c *gin.Context) {
 	var sentence model.Sentence
-
+	// 必须参数绑定 参数是JSON格式
 	if err := c.ShouldBindJSON(&sentence); err != nil {
 		c.JSON(200, model.Response{
 			Code:    400,
@@ -22,8 +22,8 @@ func CreateSentence(c *gin.Context) {
 		})
 		return
 	}
-
-	if err := database.DB.Create(&sentence).Error; err != nil {
+	err := service.CreateSentence(&sentence)
+	if err != nil {
 		c.JSON(200, model.Response{
 			Code:    500,
 			Message: "创建句子失败",
@@ -38,9 +38,56 @@ func CreateSentence(c *gin.Context) {
 	})
 }
 
+// DeleteSentence 删除句子
+func DeleteSentence(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+
+	if err != nil {
+		c.JSON(200, model.Response{
+			Code:    400,
+			Message: "请求参数错误",
+			Data:    nil,
+		})
+		return
+	}
+
+	err = service.DeleteSentence(id)
+	if err != nil {
+		c.JSON(200, model.Response{
+			Code:    500,
+			Message: "删除句子失败",
+			Data:    nil,
+		})
+		return
+	}
+
+	c.JSON(200, model.Response{
+		Code:    200,
+		Message: "删除句子成功",
+		Data:    nil,
+	})
+}
+
 // 分页查询句子
+type ListSentencesRequest struct { // 定义请求参数结构体 form标签用于绑定URL查询参数
+	Page     int `form:"page"`
+	PageSize int `form:"pageSize"`
+}
+
 func GetListSentences(c *gin.Context) {
-	data, err := service.ListSentences(1, 200)
+	var params ListSentencesRequest
+	// 绑定 URL 查询参数
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(200, model.Response{
+			Code:    400,
+			Message: "请求参数错误",
+			Data:    nil,
+		})
+		return
+	}
+	fmt.Printf("page: %T, page: %d, pageSize: %T, pageSize: %d\n", params.Page, params.Page, params.PageSize, params.PageSize)
+	data, err := service.ListSentences(params.Page, params.PageSize)
 	if err != nil {
 		c.JSON(200, model.Response{
 			Code:    500,

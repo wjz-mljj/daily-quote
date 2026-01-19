@@ -101,7 +101,7 @@
              <el-dialog
                 v-model="configDialogVisible"
                 title="配置"
-                width="900"
+                width="600"
                 append-to-body
                 :close-on-click-modal="false"
             >
@@ -117,14 +117,37 @@
                         <el-button type="primary" @click="dialogVisible = true">添加</el-button>
                         <el-button type="success" @click="exportSentences">导出</el-button>
                     </div>
-                   <el-table :data="tableData" style="width: 100%" max-height="300">
-                        <el-table-column prop="content" label="内容" />
-                        <!-- <el-table-column fixed="right" label="操作" width="150">
-                            <template #default="scope">
-                                <el-button type="danger">删除</el-button>
-                            </template>
-                        </el-table-column> -->
-                    </el-table>
+                    <div>
+                        <el-table :data="tableData" style="width: 100%" max-height="300" border>
+                            <el-table-column prop="content" label="内容">
+                                <template #default="scope">
+                                    <div>{{ scope.row.content }}</div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column fixed="right" label="操作" width="100">
+                                <template #default="scope">
+                                    <el-popconfirm
+                                        title="是否删除该句子？"
+                                        placement="top-start"
+                                        confirm-button-text="确认"
+                                        cancel-button-text="取消"
+                                        @confirm="handleDelSentence(scope.row)"
+                                    >
+                                    <template #reference>
+                                        <el-button type="danger">删除</el-button>
+                                    </template>
+                                  </el-popconfirm>
+                                    
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <el-pagination layout="prev, pager, next"
+                            v-model:current-page="formPagination.page"
+                            v-model:page-size="formPagination.pageSize"
+                            :total="formPagination.total"
+                            @current-change="handlePagination"
+                        />
+                    </div>
                 </div>
             </el-dialog>
             <!-- 删除模型 -->
@@ -215,255 +238,299 @@
     const { ElMessage } = ElementPlus;
 
     const App = {
-    setup() {
-        const dialogVisible = ref(false);
-        const input = ref('');
-        const message = ref('');
-        const optionsAnalysis = ref([
-            { value: 'semantic', label: '语义分析' },
-            { value: 'emotion', label: '情感分析' },
-            { value: 'humor', label: '幽默分析' },
-            { value: 'intent', label: '意图分析' },
-            { value: 'tone', label: '语气分析' },
-        ]);
-        const currentModelAnalysis = ref('semantic');
-        const configDialogVisible = ref(false);
-        // 每日一句
-        const getDailySentence = async () => {
-            try {
-                const res = await fetch('/api/single_sentence')
-                const data = await res.json()
-                if (data.code == 200) {
-                    let obj = data.data || {}
-                    message.value = obj.content || 'No sentence found.'
-                }
-            } catch (error) {}
-        }
-        // 添加 句子
-        const handleAdd = async () => {
-            if (!input.value) {
-                ElMessage({
-                    message: '请输入内容!',
-                    type: 'warning',
-                })
-                return
+        setup() {
+            const dialogVisible = ref(false);
+            const input = ref('');
+            const message = ref('');
+            const optionsAnalysis = ref([
+                { value: 'semantic', label: '语义分析' },
+                { value: 'emotion', label: '情感分析' },
+                { value: 'humor', label: '幽默分析' },
+                { value: 'intent', label: '意图分析' },
+                { value: 'tone', label: '语气分析' },
+            ]);
+            const currentModelAnalysis = ref('semantic');
+            const configDialogVisible = ref(false);
+            // 每日一句
+            const getDailySentence = async () => {
+                try {
+                    const res = await fetch('/api/single_sentence')
+                    const data = await res.json()
+                    if (data.code == 200) {
+                        let obj = data.data || {}
+                        message.value = obj.content || 'No sentence found.'
+                    }
+                } catch (error) {}
             }
-            try {
-                const res = await fetch('/api/add_sentence', {
-                    method: 'POST',
+            // 添加 句子
+            const handleAdd = async () => {
+                if (!input.value) {
+                    ElMessage({
+                        message: '请输入内容!',
+                        type: 'warning',
+                    })
+                    return
+                }
+                try {
+                    const res = await fetch('/api/add_sentence', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            content: input.value,
+                        }),
+                    })
+                    const data = await res.json()
+                    if (data.code == 200) {
+                        ElMessage.success('添加成功!')
+                        message.value = input.value;
+                        input.value = ''
+                        dialogVisible.value = false
+                        getSentenceList();
+                    } else {
+                        ElMessage.error('添加失败!')
+                    }
+                } catch (error) {
+                    console.error('Error adding sentence:', error)
+                }
+            }
+            // 删除 句子
+            const handleDelSentence = async (row) => {
+                console.log('Delete Sentence Data:', row)
+            
+                const res = await fetch(`/api/del_sentence/${row.ID}`, {
+                    method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        content: input.value,
+                        id: row.ID,
                     }),
                 })
                 const data = await res.json()
                 if (data.code == 200) {
-                    ElMessage.success('添加成功!')
-                    message.value = input.value;
-                    input.value = ''
-                    dialogVisible.value = false
+                    ElMessage.success('删除成功!')
+                    getSentenceList();
                 } else {
                     ElMessage.error('添加失败!')
                 }
-            } catch (error) {
-                console.error('Error adding sentence:', error)
             }
-        }
-        
-        // 句子列表
-        const tableData = ref([]);
-        const getSentenceList = async () => {
-            try {
-                const res = await fetch('/api/sentence_list')
-                const data = await res.json()
-                if (data.code == 200) {
-                    let list = data.data.list || [];
-                    tableData.value = list
-                    console.log('Sentence List:', tableData.value)
-                }
-            } catch (error) {
-                console.error('Error fetching sentence list:', error)
-            }
-        }
-        // 模型列表（可用）
-        const options = ref([])
-        const currentModel = ref('')
-        const getOllamaModelsList = async () => {
-            try {
-                const res = await fetch('/api/ollama_models')
-                const data = await res.json()
-                if (data.code == 200) {
-                    let models = data.data.models || [];
-                    currentModel.value = models.length > 0 ? models[0].name : ''
-                    options.value = models.map(model => ({
-                        value: model.name,
-                        label: model.name,
-                    }))
-                }
-                console.log('Ollama Models List:', data)
-            } catch (error) {
-                console.error('Error fetching Ollama models:', error)
-            }
-        }
-        // 删除模型
-        const deleteModelDialogVisible = ref(false)
-        const currentModelToDelete = ref('')
-        const handleDelModel = async () => {
-            if (!currentModelToDelete.value) {
-                ElMessage({
-                    message: '请选择要删除的模型!',
-                    type: 'warning',
-                })
-                return
-            }
-            try {
-                const res = await fetch('/api/ollama_delete_model', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        modelName: currentModelToDelete.value,
-                    }),
-                })
-                const data = await res.json()
-                if (data.code == 200) {
-                    ElMessage.success('模型删除成功!')
-                    deleteModelDialogVisible.value = false
-                    getOllamaModelsList()
-                } else {
-                    ElMessage.error('模型删除失败!')
-                }
-            } catch (error) {
-                console.error('Error deleting Ollama model:', error)
-            }
-        }
-        // 拉取模型
-        const pullModelDialogVisible = ref(false)
-        const pullModelName = ref('')
-        const pullLoading = ref(false)
-        const pullError = ref('')
-        const handlePullModel = async () => {
-            if (!pullModelName.value) {
-                ElMessage({
-                    message: '请输入要拉取的模型名称!',
-                    type: 'warning',
-                })
-                return
-            }
-            try {
-                // llama3.2:1b
-                const source = new EventSource(`/api/pull/stream?modelName=${pullModelName.value}`)
-                pullError.value = ''
-                pullLoading.value = true
-                source.onmessage = (e) => {
-                    const data = JSON.parse(e.data)
-                    // console.log(data)
-                    if (data.status === "success") {
-                        pullLoading.value = false
-                        pullModelDialogVisible.value = false
-                        source.close()
-                        ElMessage.success('模型拉取成功!')
-                        setTimeout(() => {
-                            getOllamaModelsList()
-                        }, 1000)
+            
+            // 句子列表
+            const tableData = ref([]);
+            const formPagination = ref({
+                page: 1,
+                pageSize: 5,
+                total: 0,
+            });
+            const getSentenceList = async () => {
+                try {
+                    let url = `/api/sentence_list?page=${formPagination.value.page}&pageSize=${formPagination.value.pageSize}`
+                    const res = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    const data = await res.json()
+                    if (data.code == 200) {
+                        let list = data.data.list || [];
+                        tableData.value = list
+                        console.log('Sentence List:', tableData.value)
+                        formPagination.value.total = data.data.total || 0
+                        formPagination.value.page = data.data.page || 1
+                        formPagination.value.pageSize = data.data.pageSize || 10
                     }
+                } catch (error) {
+                    console.error('Error fetching sentence list:', error)
                 }
-                source.onerror = () => {
-                    pullLoading.value = false
+            }
+            const handlePagination = (value) => {
+                formPagination.value.pageNum = value || 1;
+                getSentenceList()
+            }
+        
+            // 模型列表（可用）
+            const options = ref([])
+            const currentModel = ref('')
+            const getOllamaModelsList = async () => {
+                try {
+                    const res = await fetch('/api/ollama_models')
+                    const data = await res.json()
+                    if (data.code == 200) {
+                        let models = data.data.models || [];
+                        currentModel.value = models.length > 0 ? models[0].name : ''
+                        options.value = models.map(model => ({
+                            value: model.name,
+                            label: model.name,
+                        }))
+                    }
+                    console.log('Ollama Models List:', data)
+                } catch (error) {
+                    console.error('Error fetching Ollama models:', error)
+                }
+            }
+            // 删除模型
+            const deleteModelDialogVisible = ref(false)
+            const currentModelToDelete = ref('')
+            const handleDelModel = async () => {
+                if (!currentModelToDelete.value) {
+                    ElMessage({
+                        message: '请选择要删除的模型!',
+                        type: 'warning',
+                    })
+                    return
+                }
+                try {
+                    const res = await fetch('/api/ollama_delete_model', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            modelName: currentModelToDelete.value,
+                        }),
+                    })
+                    const data = await res.json()
+                    if (data.code == 200) {
+                        ElMessage.success('模型删除成功!')
+                        deleteModelDialogVisible.value = false
+                        getOllamaModelsList()
+                    } else {
+                        ElMessage.error('模型删除失败!')
+                    }
+                } catch (error) {
+                    console.error('Error deleting Ollama model:', error)
+                }
+            }
+            // 拉取模型
+            const pullModelDialogVisible = ref(false)
+            const pullModelName = ref('')
+            const pullLoading = ref(false)
+            const pullError = ref('')
+            const handlePullModel = async () => {
+                if (!pullModelName.value) {
+                    ElMessage({
+                        message: '请输入要拉取的模型名称!',
+                        type: 'warning',
+                    })
+                    return
+                }
+                try {
+                    // llama3.2:1b
+                    const source = new EventSource(`/api/pull/stream?modelName=${pullModelName.value}`)
+                    pullError.value = ''
+                    pullLoading.value = true
+                    source.onmessage = (e) => {
+                        const data = JSON.parse(e.data)
+                        // console.log(data)
+                        if (data.status === "success") {
+                            pullLoading.value = false
+                            pullModelDialogVisible.value = false
+                            source.close()
+                            ElMessage.success('模型拉取成功!')
+                            setTimeout(() => {
+                                getOllamaModelsList()
+                            }, 1000)
+                        }
+                    }
+                    source.onerror = () => {
+                        pullLoading.value = false
+                        pullError.value = 'Error pulling Ollama model.'
+                        source.close()
+                    }
+                } catch (error) {
                     pullError.value = 'Error pulling Ollama model.'
-                    source.close()
                 }
-            } catch (error) {
-                pullError.value = 'Error pulling Ollama model.'
             }
-        }
-        // AI分析
-        const analysisResult = ref('')
-        const loading = ref(false)
-        const getOllamaAnalysis = async () => {
-            if (!currentModel.value) {
-                ElMessage({
-                    message: '请选择模型!',
-                    type: 'warning',
-                })
-                return
-            }
-            if (!message.value) {
-                alert('Please fetch a sentence first.')
-                return
-            }
-            try {
-                loading.value = true
-                const res = await fetch('/api/ollama_generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: currentModel.value,
-                        sentence: message.value,
-                        analysis_type: currentModelAnalysis.value,
-                    }),
-                })
-                const data = await res.json()
-                if (data.code == 200) {
-                    analysisResult.value = marked.parse(data.data.response)
+            // AI分析
+            const analysisResult = ref('')
+            const loading = ref(false)
+            const getOllamaAnalysis = async () => {
+                if (!currentModel.value) {
+                    ElMessage({
+                        message: '请选择模型!',
+                        type: 'warning',
+                    })
+                    return
                 }
-                loading.value = false;
-            } catch (error) {
-                loading.value = false
-                console.error('Error fetching Ollama analysis:', error)
+                if (!message.value) {
+                    alert('Please fetch a sentence first.')
+                    return
+                }
+                try {
+                    loading.value = true
+                    const res = await fetch('/api/ollama_generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: currentModel.value,
+                            sentence: message.value,
+                            analysis_type: currentModelAnalysis.value,
+                        }),
+                    })
+                    const data = await res.json()
+                    if (data.code == 200) {
+                        analysisResult.value = marked.parse(data.data.response)
+                    }
+                    loading.value = false;
+                } catch (error) {
+                    loading.value = false
+                    console.error('Error fetching Ollama analysis:', error)
+                }
+            }
+            
+            // 导出
+            const exportSentences = () => {
+                fetch('/export/sentences')
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = 'sentences.xlsx'
+                        a.click()
+                        URL.revokeObjectURL(url)
+                    })
+            }
+            
+            onMounted(() => {
+                getDailySentence()
+                getOllamaModelsList()
+                getSentenceList()
+            })
+            return {
+                message,
+                input,
+                options,
+                currentModel,
+                analysisResult,
+                dialogVisible,
+                optionsAnalysis,
+                currentModelAnalysis,
+                loading,
+                deleteModelDialogVisible,
+                currentModelToDelete,
+                pullModelDialogVisible,
+                pullModelName,
+                pullLoading,
+                pullError,
+                configDialogVisible,
+                tableData,
+                formPagination,
+                handlePullModel,
+                handleDelModel,
+                handleAdd,
+                getDailySentence,
+                getOllamaAnalysis,
+                exportSentences,
+                handleDelSentence,
+                handlePagination,
             }
         }
-        
-        // 导出
-        const exportSentences = () => {
-            fetch('/export/sentences')
-                .then(res => res.blob())
-                .then(blob => {
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = 'sentences.xlsx'
-                    a.click()
-                    URL.revokeObjectURL(url)
-                })
-        }
-        
-        onMounted(() => {
-            getDailySentence()
-            getOllamaModelsList()
-            getSentenceList()
-        })
-        return {
-            message,
-            input,
-            options,
-            currentModel,
-            analysisResult,
-            dialogVisible,
-            optionsAnalysis,
-            currentModelAnalysis,
-            loading,
-            deleteModelDialogVisible,
-            currentModelToDelete,
-            pullModelDialogVisible,
-            pullModelName,
-            pullLoading,
-            pullError,
-            configDialogVisible,
-            tableData,
-            handlePullModel,
-            handleDelModel,
-            handleAdd,
-            getDailySentence,
-            getOllamaAnalysis,
-            exportSentences,
-        }
-    }
     }
 
     createApp(App).use(ElementPlus).mount('#app');

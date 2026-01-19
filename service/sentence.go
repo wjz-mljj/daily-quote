@@ -5,6 +5,7 @@ import (
 	"daily-quote/model"
 )
 
+// 随机获取一句话
 func RandomSentence() (*model.Sentence, error) {
 	var sentence model.Sentence
 	err := database.DB.
@@ -15,8 +16,25 @@ func RandomSentence() (*model.Sentence, error) {
 	return &sentence, err
 }
 
+// 创建句子
+func CreateSentence(sentence *model.Sentence) error {
+	err := database.DB.Create(sentence).Error
+	return err
+}
+
+// 删除单个句子
+func DeleteSentence(id int) error {
+	// 判断是否存在
+	var s model.Sentence
+	if err := database.DB.First(&s, id).Error; err != nil {
+		return err
+	}
+	err := database.DB.Delete(&s, id).Error
+	return err
+}
+
 // 分页查询句子
-func ListSentences(page, pageSize int) (*model.PageResult[model.Sentence], error) {
+func ListSentences(page int, pageSize int) (*model.PageResult[model.Sentence], error) {
 	if page < 1 {
 		page = 1
 	}

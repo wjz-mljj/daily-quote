@@ -9,6 +9,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// https://gorm.io/zh_CN/docs/advanced_query.html
 var DB *gorm.DB
 
 func InitSQLite() {
