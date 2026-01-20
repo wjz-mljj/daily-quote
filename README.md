@@ -3,7 +3,7 @@
 一个基于 Golang + 本地 Ollama 构建的「每日一句」分析项目，支持本地存储、多维度文本分析，所有数据全程本地化，不上传、不出本机。
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.20+-00ADD8.svg)](https://golang.org/)
 [![Ollama](https://img.shields.io/badge/Ollama-Local-7D64FF.svg)](https://ollama.com/)
 
 ## 🌟 功能特性
@@ -39,6 +39,7 @@
 请确保本机已安装并准备好以下环境：
 - Go ≥ 1.20
 - Ollama（本地运行）
+
 确认 Ollama 已正常运行：
 ```bash
 ollama --version
@@ -60,7 +61,9 @@ go run main.go
 
 ### 打包项目
 > 打包命令：go build -o app.exe
+
 > mac 打包windows命令：GOOS=windows GOARCH=amd64 go build -o app.exe
+
 > mac 打包命令：GIN_MODE=release go build -o app main.go
 
 
