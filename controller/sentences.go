@@ -15,27 +15,15 @@ func CreateSentence(c *gin.Context) {
 	var sentence model.Sentence
 	// 必须参数绑定 参数是JSON格式
 	if err := c.ShouldBindJSON(&sentence); err != nil {
-		c.JSON(200, model.Response{
-			Code:    400,
-			Message: "请求参数错误",
-			Data:    nil,
-		})
+		model.Fail(c, 400, "请求参数错误")
 		return
 	}
 	err := service.CreateSentence(&sentence)
 	if err != nil {
-		c.JSON(200, model.Response{
-			Code:    500,
-			Message: "创建句子失败",
-			Data:    nil,
-		})
+		model.Fail(c, 500, "创建句子失败")
 		return
 	}
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "创建句子成功",
-		Data:    sentence,
-	})
+	model.Success(c, "创建句子成功", sentence)
 }
 
 // DeleteSentence 删除句子
@@ -44,29 +32,16 @@ func DeleteSentence(c *gin.Context) {
 	id, err := strconv.Atoi(idStr)
 
 	if err != nil {
-		c.JSON(200, model.Response{
-			Code:    400,
-			Message: "请求参数错误",
-			Data:    nil,
-		})
+		model.Fail(c, 400, "请求参数错误")
 		return
 	}
 
 	err = service.DeleteSentence(id)
 	if err != nil {
-		c.JSON(200, model.Response{
-			Code:    500,
-			Message: "删除句子失败",
-			Data:    nil,
-		})
+		model.Fail(c, 500, "删除句子失败")
 		return
 	}
-
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "删除句子成功",
-		Data:    nil,
-	})
+	model.Success(c, "删除句子成功", nil)
 }
 
 // 分页查询句子
@@ -79,58 +54,33 @@ func GetListSentences(c *gin.Context) {
 	var params ListSentencesRequest
 	// 绑定 URL 查询参数
 	if err := c.ShouldBindQuery(&params); err != nil {
-		c.JSON(200, model.Response{
-			Code:    400,
-			Message: "请求参数错误",
-			Data:    nil,
-		})
+		model.Fail(c, 400, "请求参数错误")
 		return
 	}
 	fmt.Printf("page: %T, page: %d, pageSize: %T, pageSize: %d\n", params.Page, params.Page, params.PageSize, params.PageSize)
 	data, err := service.ListSentences(params.Page, params.PageSize)
 	if err != nil {
-		c.JSON(200, model.Response{
-			Code:    500,
-			Message: "Error",
-			Data:    nil,
-		})
+		model.Fail(c, 500, "Error")
 		return
 	}
-
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "success",
-		Data:    data,
-	})
+	model.Success(c, "success", data)
 }
 
 // GetRandomSentence 获取单个句子
 func GetRandomSentence(c *gin.Context) {
 	sentence, err := service.RandomSentence()
 	if err != nil {
-		c.JSON(200, model.Response{
-			Code:    500,
-			Message: "Error",
-			Data:    nil,
-		})
+		model.Fail(c, 500, "Error")
 		return
 	}
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "success",
-		Data:    sentence,
-	})
+	model.Success(c, "success", sentence)
 }
 
-// 导出
+// 导出 excel
 func ExportSentences(c *gin.Context) {
 	data, err := service.ExportSentences()
 	if err != nil {
-		c.JSON(200, model.Response{
-			Code:    500,
-			Message: "Error",
-			Data:    nil,
-		})
+		model.Fail(c, 500, "Error")
 		return
 	}
 	f := excelize.NewFile()

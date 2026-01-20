@@ -5,26 +5,9 @@ import (
 	"daily-quote/service"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
-
-func ModelsList(c *gin.Context) {
-	reqs, err := service.OllamaListModels()
-	if err != nil {
-		c.JSON(200, gin.H{
-			"code": 500,
-			"msg":  "error",
-		})
-		return
-	}
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "success",
-		Data:    reqs,
-	})
-}
 
 type OllamaRequest struct {
 	Model        string `json:"model"`
@@ -32,61 +15,49 @@ type OllamaRequest struct {
 	AnalysisType string `json:"analysis_type"`
 }
 
+type OllamaDeleteRequest struct { // 响应结构体
+	ModelNmae string `json:"modelName"`
+}
+
+func ModelsList(c *gin.Context) {
+	reqs, err := service.OllamaListModels()
+	if err != nil {
+		model.Fail(c, 500, "error")
+		return
+	}
+	model.Success(c, "success", reqs)
+}
+
 func OllamaGenerateRequest(c *gin.Context) {
 	var params OllamaRequest
 	if err := c.ShouldBindJSON(&params); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "参数错误",
-			"details": err.Error(),
-		})
+		model.Fail(c, 500, "参数错误")
 		return
 	}
 	fmt.Println(params.Model)
 	reqs, err := service.OllamaGenerate(params.Model, params.Sentence, params.AnalysisType)
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"code": 500,
-			"msg":  "error",
-		})
+		model.Fail(c, 500, "error")
 		return
 	}
-
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "success",
-		Data:    reqs,
-	})
-}
-
-type OllamaDeleteRequest struct { // 响应结构体
-	ModelNmae string `json:"modelName"`
+	model.Success(c, "success", reqs)
 }
 
 // 删除指定模型
 func OllamaDeleteModele(c *gin.Context) {
 	var params OllamaDeleteRequest
 	if err := c.ShouldBindJSON(&params); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "参数错误",
-			"details": err.Error(),
-		})
+		model.Fail(c, 500, "参数错误")
 		return
 	}
 	print(params.ModelNmae)
 	reqs, err := service.Ollama_delete_model(params.ModelNmae)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"code": 500,
-			"msg":  "error",
-		})
+		model.Fail(c, 500, "error")
 		return
 	}
-	c.JSON(200, model.Response{
-		Code:    200,
-		Message: "success",
-		Data:    reqs,
-	})
+	model.Success(c, "success", reqs)
 }
 
 // SSE 错误处理
@@ -103,7 +74,7 @@ func sseError(w gin.ResponseWriter, msg string) {
 func OllamaPullModel(c *gin.Context) {
 	modelName := c.Query("modelName")
 	if modelName == "" {
-		c.JSON(400, gin.H{"error": "model name required"})
+		model.Fail(c, 500, "参数错误")
 		return
 	}
 	w := c.Writer

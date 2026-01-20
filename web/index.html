@@ -72,8 +72,8 @@
                 <el-text class="textCenter" type="primary" size="large">{{ message }}</el-text>
             </div>
             
-            <div @click="getDailySentence" class="textCenter" style="margin: 20px 0;">
-                <el-button type="success">每日一句</el-button>  
+            <div class="textCenter" style="margin: 20px 0;">
+                <el-button type="success" @click="getDailySentence">每日一句</el-button>  
             </div>
             <div style="text-align: center;">
                 <el-select v-model="currentModel" placeholder="" style="width: 200px">
@@ -84,7 +84,7 @@
                         :value="item.value"
                     />
                 </el-select>
-                <el-select v-model="currentModelAnalysis" placeholder="" style="width: 100px">
+                <el-select v-model="currentModelAnalysis" placeholder="" style="width: 150px">
                     <el-option
                         v-for="item in optionsAnalysis"
                         :key="item.value"
@@ -243,13 +243,13 @@
             const input = ref('');
             const message = ref('');
             const optionsAnalysis = ref([
-                { value: 'semantic', label: '语义分析' },
-                { value: 'emotion', label: '情感分析' },
-                { value: 'humor', label: '幽默分析' },
-                { value: 'intent', label: '意图分析' },
-                { value: 'tone', label: '语气分析' },
+                { value: 'literary', label: '文学表达分析' },
+                { value: 'logic', label: '逻辑与含义拆解' },
+                { value: 'emotion', label: '情绪与语气判断' },
+                { value: 'context', label: '口语/沟通场景解读' },
+                { value: 'learning', label: '学习与思考角度延展' },
             ]);
-            const currentModelAnalysis = ref('semantic');
+            const currentModelAnalysis = ref('literary');
             const configDialogVisible = ref(false);
             // 每日一句
             const getDailySentence = async () => {
