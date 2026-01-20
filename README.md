@@ -58,6 +58,7 @@ go run main.go
 - 会在本地创建 SQLite 数据库文件
 - 不会上传任何数据
 - 所有分析请求均通过 本地 Ollama 完成(需确保本地Ollama运行)
+- 在浏览器中输入：http://127.0.0.1:8901
 
 ### 打包项目
 > 打包命令：go build -o app.exe
