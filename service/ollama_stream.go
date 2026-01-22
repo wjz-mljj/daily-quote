@@ -32,14 +32,6 @@ type PullProgress struct {
 	Completed int64  `json:"completed,omitempty"`
 }
 
-var PROMPT_TEMPLATES = map[string]string{
-	"semantic": `分析方向：语义分析。请从字面含义和隐含含义两个层面分析这句话。需要分析的句子：{sentence}`,
-	"emotion":  `分析方向：情感分析。请判断这句话的情感倾向，并说明判断依据。需要分析的句子：{sentence}`,
-	"humor":    `分析方向：幽默分析。请分析这句话是否具有幽默、讽刺或反讽效果，并说明原因。需要分析的句子：{sentence}`,
-	"intent":   `分析方向：意图分析。请判断说话者的真实意图或目的。需要分析的句子：{sentence}`,
-	"tone":     `分析方向：语气分析。请分析这句话的语气特征。需要分析的句子：{sentence}`,
-}
-
 type PromptTemplate struct {
 	Prompt      string  `json:"prompt"`
 	Title       string  `json:"title"`

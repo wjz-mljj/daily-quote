@@ -5,20 +5,19 @@ import (
 	"daily-quote/middleware"
 	"embed"
 	"io/fs"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 func InitRouter(webFS embed.FS) *gin.Engine {
-	// gin.ReleaseMode gin.DebugMode
+	// gin.ReleaseMode：生产 ；gin.DebugMode：本地调试
 	gin.SetMode(gin.DebugMode)
 	r := gin.Default()
 	r.Use(middleware.Recovery())
 
 	isDev := gin.Mode() == gin.DebugMode
-	log.Println("运行模式:", isDev)
+
 	if isDev {
 		r.Static("/static", "./web")
 
