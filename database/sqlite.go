@@ -10,6 +10,7 @@ import (
 )
 
 // https://gorm.io/zh_CN/docs/advanced_query.html
+// 定义全局DB变量
 var DB *gorm.DB
 
 func InitSQLite() {
@@ -23,6 +24,7 @@ func InitSQLite() {
 	if err != nil {
 		log.Fatal("SQLite 连接失败:", err)
 	}
+
 	DB.AutoMigrate(&model.Sentence{})
 
 	log.Println("SQLite 连接成功")

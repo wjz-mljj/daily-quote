@@ -86,13 +86,16 @@ func ExportSentences(c *gin.Context) {
 	f := excelize.NewFile()
 	sheet := "Sheet1"
 
-	f.SetCellValue(sheet, "A1", "ID")
-	f.SetCellValue(sheet, "B1", "内容")
+	f.SetCellValue(sheet, "A1", "内容")
+	f.SetCellValue(sheet, "B1", "分析模板")
+	f.SetCellValue(sheet, "C1", "分析结果")
 
 	for i, s := range data {
+
 		row := i + 2
-		f.SetCellValue(sheet, "A"+strconv.Itoa(row), s.ID)
-		f.SetCellValue(sheet, "B"+strconv.Itoa(row), s.Content)
+		f.SetCellValue(sheet, "A"+strconv.Itoa(row), s.Content)
+		f.SetCellValue(sheet, "B"+strconv.Itoa(row), s.Type)
+		f.SetCellValue(sheet, "C"+strconv.Itoa(row), model.MarkdownToPlainText(s.AnalysisResults))
 	}
 
 	// 设置响应头（关键）

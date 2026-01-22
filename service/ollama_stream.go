@@ -3,7 +3,11 @@ package service
 import (
 	"bufio"
 	"bytes"
+	"daily-quote/database"
+	"daily-quote/model"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -140,7 +144,7 @@ func (pt PromptTemplate) Render(sentence string) string {
 }
 
 // 使用 Ollama 生成文本分析结果
-func OllamaGenerate(model_str string, sentence string, analysisType string) (interface{}, error) {
+func OllamaGenerate(model_str string, sentence string, analysisType string, sentenceId uint) (interface{}, error, bool) {
 	tpl := GetPromptTemplate(analysisType)
 	prompt := tpl.Render(sentence)
 	payload := OllamaGenerateRequest{
@@ -157,22 +161,51 @@ func OllamaGenerate(model_str string, sentence string, analysisType string) (int
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, err, false
 	}
 
 	resp, err := http.Post(base_url+"/api/generate", "application/json",
 		bytes.NewBuffer(payloadBytes))
 	if err != nil {
-		return nil, err
+		return nil, err, false
 	}
 	defer resp.Body.Close()
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+		return nil, err, false
 	}
 
-	return result, nil
+	// 写入
+	var s model.Sentence
+	if err := database.DB.First(&s, sentenceId).Error; err != nil {
+		return result, nil, true
+	}
+
+	// 更新 这里只更新 analysis_results 和 type 字段 https://gorm.io/zh_CN/docs/update.html
+	updateData := map[string]interface{}{
+		"analysis_results": fmt.Sprintf("%v", result["response"]),
+		"type":             tpl.Title,
+	}
+
+	if err := database.DB.Model(&s).Updates(updateData).Error; err != nil {
+		return result, nil, true
+	}
+
+	// Markdown 转 HTML
+	respStr, ok := result["response"].(string)
+	if !ok {
+		respStr = fmt.Sprintf("%v", result["response"])
+	}
+	var htmlStr string
+	htmlStr, err = model.MarkdownToHTML(respStr)
+	if err != nil {
+		log.Println("转换失败:", err)
+		htmlStr = respStr
+	}
+	result["response"] = htmlStr
+
+	return result, nil, false
 }
 
 // 列出 Ollama 可用模型

@@ -5,6 +5,7 @@ go 1.24.2
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/xuri/excelize/v2 v2.10.0
+	github.com/yuin/goldmark v1.7.16
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.1
 	modernc.org/sqlite v1.43.0

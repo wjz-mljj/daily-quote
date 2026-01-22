@@ -13,6 +13,7 @@ type OllamaRequest struct {
 	Model        string `json:"model"`
 	Sentence     string `json:"sentence"`
 	AnalysisType string `json:"analysis_type"`
+	SentenceId   uint   `json:"sentence_id"`
 }
 
 type OllamaDeleteRequest struct { // 响应结构体
@@ -35,13 +36,18 @@ func OllamaGenerateRequest(c *gin.Context) {
 		return
 	}
 	fmt.Println(params.Model)
-	reqs, err := service.OllamaGenerate(params.Model, params.Sentence, params.AnalysisType)
+	reqs, err, isWrite := service.OllamaGenerate(params.Model, params.Sentence, params.AnalysisType, params.SentenceId)
 
 	if err != nil {
 		model.Fail(c, 500, "error")
 		return
 	}
-	model.Success(c, "success", reqs)
+
+	str := "success"
+	if isWrite {
+		str = "写入失败"
+	}
+	model.Success(c, str, reqs)
 }
 
 // 删除指定模型
