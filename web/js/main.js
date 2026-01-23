@@ -189,13 +189,11 @@ const App = {
                 return
             }
             try {
-                // llama3.2:1b
                 const source = new EventSource(`/api/pull/stream?modelName=${pullModelName.value}`)
                 pullError.value = ''
                 pullLoading.value = true
                 source.onmessage = (e) => {
                     const data = JSON.parse(e.data)
-                    // console.log(data)
                     if (data.status === "success") {
                         pullLoading.value = false
                         pullModelDialogVisible.value = false

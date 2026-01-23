@@ -9,17 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type OllamaRequest struct {
-	Model        string `json:"model"`
-	Sentence     string `json:"sentence"`
-	AnalysisType string `json:"analysis_type"`
-	SentenceId   uint   `json:"sentence_id"`
-}
-
-type OllamaDeleteRequest struct { // 响应结构体
-	ModelNmae string `json:"modelName"`
-}
-
+// 获取模型列表
 func ModelsList(c *gin.Context) {
 	reqs, err := service.OllamaListModels()
 	if err != nil {
@@ -29,8 +19,9 @@ func ModelsList(c *gin.Context) {
 	model.Success(c, "success", reqs)
 }
 
+// 生成请求(分析)
 func OllamaGenerateRequest(c *gin.Context) {
-	var params OllamaRequest
+	var params model.OllamaRequest
 	if err := c.ShouldBindJSON(&params); err != nil {
 		model.Fail(c, 500, "参数错误")
 		return
@@ -52,7 +43,7 @@ func OllamaGenerateRequest(c *gin.Context) {
 
 // 删除指定模型
 func OllamaDeleteModele(c *gin.Context) {
-	var params OllamaDeleteRequest
+	var params model.OllamaDeleteRequest
 	if err := c.ShouldBindJSON(&params); err != nil {
 		model.Fail(c, 500, "参数错误")
 		return
