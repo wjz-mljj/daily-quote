@@ -73,4 +73,4 @@ go run main.go
 
 
 ## 📦 项目地址
-Gitee: [https://github.com/wjz-mljj/daily-quote](https://github.com/wjz-mljj/daily-quote)
+Github: [https://github.com/wjz-mljj/daily-quote](https://github.com/wjz-mljj/daily-quote)
